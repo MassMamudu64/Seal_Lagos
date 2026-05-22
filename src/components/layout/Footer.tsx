@@ -73,7 +73,7 @@ export default function Footer() {
           </div>
 
           {/* Payments */}
-          <div>
+          {/* <div>
             <h3 className="text-xs font-semibold uppercase tracking-kicker text-accent-500">
               Pay With
             </h3>
@@ -85,7 +85,7 @@ export default function Footer() {
                 </li>
               ))}
             </ul>
-          </div>
+          </div> */}
         </div>
 
         <div className="mt-16 flex flex-col items-start justify-between gap-4 border-t border-white/5 pt-6 text-xs text-cloud-400 sm:flex-row sm:items-center">
