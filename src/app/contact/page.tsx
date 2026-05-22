@@ -261,14 +261,14 @@ function PaymentSidebar() {
         <p className="font-mono text-[11px] uppercase tracking-kicker text-accent-500">
           Pay with
         </p>
-        <ul className="mt-5 space-y-4">
+        {/* <ul className="mt-5 space-y-4">
           {paymentMethods.map((p) => (
             <li key={p.label}>
               <p className="text-[15px] text-cloud-50">{p.label}</p>
               <p className="mt-1 font-mono text-xs text-cloud-400">{p.detail}</p>
             </li>
           ))}
-        </ul>
+        </ul> */}
       </motion.div>
 
       <motion.div variants={fadeUp} className="rounded-3xl border border-white/8 bg-gradient-to-br from-brand-900/50 to-ink-900/40 p-8 shadow-panel">
