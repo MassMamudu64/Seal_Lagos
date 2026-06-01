@@ -327,12 +327,12 @@ export const offices: Office[] = [
 
 /* ------------------------------- payments ------------------------------- */
 
-// export const paymentMethods = [
-//   { label: "Zenith Bank (Nigeria)", detail: "SEAL Logistics · 1310883156" },
-//   { label: "GTB (Liberia)", detail: "SEAL Logistics · 007001328463201022" },
-//   { label: "Cash App", detail: "952-607-0580" },
-//   { label: "Zelle", detail: "shiptetal.llc@gmail.com" },
-// ];
+export const paymentMethods = [
+  { label: "Zenith Bank (Nigeria)" },
+  { label: "GTB (Liberia)"},
+  { label: "Cash App" },
+  { label: "Zelle" },
+];
 
 /* ----------------------------- process steps ---------------------------- */
 
