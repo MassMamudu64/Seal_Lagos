@@ -265,7 +265,7 @@ function PaymentSidebar() {
           {paymentMethods.map((p) => (
             <li key={p.label}>
               <p className="text-[15px] text-cloud-50">{p.label}</p>
-              <p className="mt-1 font-mono text-xs text-cloud-400">{p.detail}</p>
+              <p className="mt-1 font-mono text-xs text-cloud-400"></p>
             </li>
           ))}
         </ul>
