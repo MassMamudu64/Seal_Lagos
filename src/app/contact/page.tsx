@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import PageHeader from "@/components/layout/PageHeader";
 import Button from "@/components/ui/Button";
-import { company, offices, paymentMethods } from "@/lib/data";
+import { company, offices,  } from "@/lib/data";
 import { fadeUp, staggerChildren, viewportOnce } from "@/lib/motion";
 
 /**
