@@ -2,6 +2,7 @@
   "name": "seal-logistics",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "npm@10.9.4",
   "description": "Seal Logistics (SHIPT ET AL LLC) — premium air-freight logistics website.",
   "scripts": {
     "dev": "next dev",
