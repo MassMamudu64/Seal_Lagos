@@ -3,7 +3,7 @@
 > **Seamless Shipping. Every Time.**
 > A premium, cinematic Next.js website for **SHIPT ET AL LLC** — air-freight and cargo services connecting the USA, Nigeria, Liberia, Ghana, Togo, South Africa, Guinea Conakry and Gambia.
 
-This repository is a fully production-grade Next.js 14 (App Router) project with a custom design system, Framer Motion-driven motion system, an in-house component library, a mock tracking API, a multi-step booking flow, and a two-mode quote calculator.
+This repository is a Next.js 14 (App Router) project with a custom design system, Framer Motion-driven motion system, an in-house component library, a mock tracking API, Supabase-backed booking/contact/quote forms, and an operations admin area.
 
 ---
 
@@ -53,10 +53,27 @@ public/
 
 ## Run it locally
 
-Requirements: **Node.js 18.17+** (or 20.x), `npm` 9+.
+Requirements: **Node.js 18.17+** (or 20.x), `npm` 9+, and a Supabase project.
 
 ```bash
 npm install
+```
+
+Before starting the app:
+
+1. Copy `.env.example` to `.env`.
+2. Fill in the Supabase URL, restricted/public insert key, service-role key, admin password, and a long random session secret.
+3. Run `supabase/migrations/001_admin_core.sql` in the Supabase SQL editor.
+
+Generate a session secret with Node:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Then run:
+
+```bash
 npm run dev          # http://localhost:3000
 ```
 
@@ -71,7 +88,7 @@ npm run dev          # http://localhost:3000
 
 ## Deployment
 
-**Vercel** is the path of least resistance: push this repo to GitHub, import it on vercel.com, and the framework preset auto-detects Next.js. No env vars required.
+**Vercel** is the path of least resistance: push this repo to GitHub, import it on vercel.com, and the framework preset auto-detects Next.js. Add all variables from `.env.example` to the Vercel project before deploying.
 
 For other hosts, `npm run build` produces a `.next` directory; serve it with `npm run start` on a Node host (Fly, Render, Railway, AWS).
 
@@ -85,9 +102,7 @@ For other hosts, `npm run build` produces a `.next` directory; serve it with `np
 These are intentionally outside the scope of the static marketing site but are listed so you can wire them up before launch:
 
 1. **Real tracking backend.** Replace `src/lib/tracking.ts` (mock store) with a database/REST call from the existing `/api/track` route.
-2. **Booking form backend.** `BookingForm.submit()` currently mints a fake reference ID. Wire it to Resend / Formspree / Sendgrid / a custom API.
-3. **Contact form backend.** Same pattern as booking.
-4. **Replace `metadataBase`** in `src/app/layout.tsx` with the real production URL once issued.
-5. **Add a real OG image** at `public/og.png` (currently the metadata references it as a hint).
-6. **Optional: switch fonts back to `next/font/google`** — the project uses runtime `<link>` tags because the build sandbox blocked Google Fonts; on Vercel you can self-host with one line.
-7. **Run `npm audit`** before launch.
+2. **Replace `metadataBase`** in `src/app/layout.tsx` with the real production URL once issued.
+3. **Add a real OG image** at `public/og.png` (currently the metadata references it as a hint).
+4. **Optional: switch fonts back to `next/font/google`** — the project uses runtime `<link>` tags because the build sandbox blocked Google Fonts; on Vercel you can self-host with one line.
+5. **Run `npm audit`** before launch.

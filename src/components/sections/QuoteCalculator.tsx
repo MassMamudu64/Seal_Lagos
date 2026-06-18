@@ -10,7 +10,7 @@ import {
   type ElectronicItem,
 } from "@/lib/data";
 import { clamp, formatUSD, kgToLbs, lbsToKg } from "@/lib/utils";
-import { LinkButton } from "@/components/ui/Button";
+import Button, { LinkButton } from "@/components/ui/Button";
 import { easeOut, modalSpring } from "@/lib/motion";
 
 /**
@@ -24,6 +24,18 @@ import { easeOut, modalSpring } from "@/lib/motion";
  */
 
 type Mode = "weight" | "electronics";
+
+type QuotePayload = {
+  mode: Mode;
+  corridorId: string | null;
+  inputWeight: number | null;
+  inputUnit: "lbs" | "kg" | null;
+  billableWeight: number | null;
+  freightTotal: number;
+  serviceFee: number;
+  total: number;
+  minimumApplied: boolean;
+};
 
 export default function QuoteCalculator() {
   const [mode, setMode] = useState<Mode>("weight");
@@ -98,6 +110,7 @@ function WeightCalculator() {
   const [amount, setAmount] = useState<string>("10");
 
   const corridor: WeightRate = weightRates.find((r) => r.id === corridorId) ?? weightRates[0];
+  const inputWeight = parseFloat(amount) || 0;
 
   const computed = useMemo(() => {
     const raw = parseFloat(amount) || 0;
@@ -255,6 +268,18 @@ function WeightCalculator() {
           },
         ]}
         total={computed.total}
+        quotePayload={{
+          mode: "weight",
+          corridorId: corridor.id,
+          inputWeight,
+          inputUnit: unit,
+          billableWeight: computed.billable,
+          freightTotal: computed.freight,
+          serviceFee: computed.serviceFee,
+          total: computed.total,
+          minimumApplied: computed.minimumApplied,
+        }}
+        canSaveQuote={inputWeight > 0}
         note={
           corridor.serviceFee === 0
             ? "A $30 service fee applies to every invoice except Nigeria-origin corridors."
@@ -359,6 +384,18 @@ function ElectronicsCalculator() {
           </label>
         }
         total={total}
+        quotePayload={{
+          mode: "electronics",
+          corridorId: null,
+          inputWeight: null,
+          inputUnit: null,
+          billableWeight: null,
+          freightTotal: subtotal,
+          serviceFee: serviceFee ? SERVICE_FEE : 0,
+          total,
+          minimumApplied: false,
+        }}
+        canSaveQuote={items.length > 0}
         note="A $30 service fee applies to every invoice except Nigeria-origin corridors."
       />
     </div>
@@ -428,13 +465,41 @@ function SummaryPanel({
   rows,
   extra,
   total,
+  quotePayload,
+  canSaveQuote,
   note,
 }: {
   rows: SummaryRow[];
   extra?: React.ReactNode;
   total: number;
+  quotePayload: QuotePayload;
+  canSaveQuote: boolean;
   note?: string;
 }) {
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const saveQuote = async () => {
+    setSaveState("saving");
+    setSaveError(null);
+
+    try {
+      const res = await fetch("/api/quotes/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(quotePayload),
+      });
+      const data = (await res.json()) as { success?: boolean; error?: string };
+      if (!res.ok || !data.success) {
+        throw new Error(data.error ?? "We could not save this quote.");
+      }
+      setSaveState("saved");
+    } catch (error) {
+      setSaveState("error");
+      setSaveError(error instanceof Error ? error.message : "Something went wrong.");
+    }
+  };
+
   return (
     <motion.aside
       variants={modalSpring}
@@ -474,6 +539,15 @@ function SummaryPanel({
       </div>
 
       <div className="mt-6 flex flex-col gap-3">
+        <Button
+          type="button"
+          fullWidth
+          variant="secondary"
+          onClick={saveQuote}
+          disabled={!canSaveQuote || saveState === "saving"}
+        >
+          {saveState === "saving" ? "Saving quote..." : saveState === "saved" ? "Quote Saved" : "Save Quote"}
+        </Button>
         <LinkButton href="/booking" fullWidth iconRight={<span aria-hidden>→</span>}>
           Confirm with our team
         </LinkButton>
@@ -482,6 +556,16 @@ function SummaryPanel({
         </LinkButton>
       </div>
 
+      {saveState === "error" && saveError && (
+        <p className="mt-4 text-[12px] text-danger" role="alert">
+          {saveError}
+        </p>
+      )}
+      {saveState === "saved" && (
+        <p className="mt-4 text-[12px] text-success">
+          Saved. Our team can now review this estimate in the admin panel.
+        </p>
+      )}
       {note && <p className="mt-4 text-[12px] text-cloud-500">{note}</p>}
     </motion.aside>
   );

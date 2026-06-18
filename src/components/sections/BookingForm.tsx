@@ -61,12 +61,50 @@ const STEP_LABELS: Record<Step, string> = {
   4: "Review",
 };
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const FIELD_LABELS: Record<string, string> = {
+  routeId: "Route",
+  serviceSlug: "Service",
+  weight: "Weight",
+  unit: "Weight unit",
+  description: "Package description",
+  pickup: "Pickup option",
+  senderName: "Sender name",
+  senderEmail: "Sender email",
+  senderPhone: "Sender phone",
+  receiverName: "Receiver name",
+  receiverPhone: "Receiver phone",
+  receiverAddress: "Receiver address",
+  notes: "Notes",
+};
+
+type BookingApiResponse = {
+  success?: boolean;
+  reference?: string;
+  error?: string;
+  details?: Record<string, string[] | undefined>;
+};
+
+function apiErrorMessage(data: BookingApiResponse): string {
+  if (data.details) {
+    for (const [field, messages] of Object.entries(data.details)) {
+      const message = messages?.[0];
+      if (message) return `${FIELD_LABELS[field] ?? field}: ${message}`;
+    }
+  }
+
+  return data.error ?? "We could not submit your booking. Please try again.";
+}
+
 export default function BookingForm() {
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormState>(initial);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [submitted, setSubmitted] = useState(false);
   const [confirmationId, setConfirmationId] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -77,7 +115,7 @@ export default function BookingForm() {
     if (s === 3)
       return Boolean(
         form.senderName.trim() &&
-          form.senderEmail.trim() &&
+          EMAIL_PATTERN.test(form.senderEmail.trim()) &&
           form.senderPhone.trim() &&
           form.receiverName.trim() &&
           form.receiverPhone.trim() &&
@@ -96,15 +134,46 @@ export default function BookingForm() {
     setStep((s) => Math.max(1, s - 1) as Step);
   };
 
-  const submit = () => {
-    // TODO: replace with a real backend call (Resend, Formspree, custom API).
-    const id =
-      "SL-" +
-      Array.from({ length: 6 }, () =>
-        "ABCDEFGHJKMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 30)],
-      ).join("");
-    setConfirmationId(id);
-    setSubmitted(true);
+  const submit = async () => {
+    if (submitting) return;
+
+    if (![1, 2, 3].every((currentStep) => stepIsValid(currentStep as Step))) {
+      setSubmitError("Please review the required fields and enter a valid sender email.");
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const payload = {
+        ...form,
+        weight: Number(form.weight),
+        description: form.description.trim(),
+        senderName: form.senderName.trim(),
+        senderEmail: form.senderEmail.trim(),
+        senderPhone: form.senderPhone.trim(),
+        receiverName: form.receiverName.trim(),
+        receiverPhone: form.receiverPhone.trim(),
+        receiverAddress: form.receiverAddress.trim(),
+        notes: form.notes.trim(),
+      };
+      const res = await fetch("/api/bookings/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = (await res.json()) as BookingApiResponse;
+      if (!res.ok || !data.success || !data.reference) {
+        throw new Error(apiErrorMessage(data));
+      }
+      setConfirmationId(data.reference);
+      setSubmitted(true);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Something went wrong.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -112,6 +181,8 @@ export default function BookingForm() {
       setForm(initial);
       setStep(1);
       setSubmitted(false);
+      setConfirmationId("");
+      setSubmitError(null);
     }} />;
   }
 
@@ -183,13 +254,18 @@ export default function BookingForm() {
           <Button variant="ghost" onClick={back} disabled={step === 1}>
             ← Back
           </Button>
+          {submitError && (
+            <p className="text-sm text-danger" role="alert">
+              {submitError}
+            </p>
+          )}
           {step < 4 ? (
             <Button onClick={next} disabled={!stepIsValid(step)} iconRight={<span aria-hidden>→</span>}>
               Continue
             </Button>
           ) : (
-            <Button onClick={submit} iconRight={<span aria-hidden>✓</span>}>
-              Submit Booking
+            <Button onClick={submit} disabled={submitting} iconRight={<span aria-hidden>✓</span>}>
+              {submitting ? "Submitting..." : "Submit Booking"}
             </Button>
           )}
         </div>
@@ -350,7 +426,17 @@ function Step3({ form, update }: { form: FormState; update: <K extends keyof For
         <Legend index="04" title="Sender" subtitle="Who is sending this shipment?" />
         <div className="mt-6 grid gap-4">
           <Input label="Full name" value={form.senderName} onChange={(v) => update("senderName", v)} />
-          <Input label="Email" type="email" value={form.senderEmail} onChange={(v) => update("senderEmail", v)} />
+          <Input
+            label="Email"
+            type="email"
+            value={form.senderEmail}
+            onChange={(v) => update("senderEmail", v)}
+            error={
+              form.senderEmail.trim() && !EMAIL_PATTERN.test(form.senderEmail.trim())
+                ? "Enter a valid email address."
+                : undefined
+            }
+          />
           <Input label="Phone" type="tel" value={form.senderPhone} onChange={(v) => update("senderPhone", v)} />
         </div>
       </div>
@@ -460,6 +546,7 @@ function Input({
   placeholder,
   suffix,
   readOnly,
+  error,
 }: {
   label: string;
   value: string;
@@ -468,6 +555,7 @@ function Input({
   placeholder?: string;
   suffix?: React.ReactNode;
   readOnly?: boolean;
+  error?: string;
 }) {
   return (
     <label className="block">
@@ -481,12 +569,19 @@ function Input({
           onChange={onChange ? (e) => onChange(e.target.value) : undefined}
           readOnly={readOnly}
           placeholder={placeholder}
-          className="h-12 w-full rounded-xl bg-ink-950/80 px-4 pr-32 text-[15px] text-cloud-50 outline-none ring-1 ring-white/10 transition-shadow focus:ring-2 focus:ring-accent-500"
+          aria-invalid={Boolean(error)}
+          className={cn(
+            "h-12 w-full rounded-xl bg-ink-950/80 px-4 pr-32 text-[15px] text-cloud-50 outline-none ring-1 transition-shadow focus:ring-2",
+            error
+              ? "ring-danger/60 focus:ring-danger"
+              : "ring-white/10 focus:ring-accent-500",
+          )}
         />
         {suffix && (
           <span className="absolute right-2 top-1/2 -translate-y-1/2">{suffix}</span>
         )}
       </span>
+      {error && <span className="mt-2 block text-xs text-danger">{error}</span>}
     </label>
   );
 }

@@ -113,11 +113,31 @@ function ContactForm() {
     message: "",
   });
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: wire to a real backend (Resend, Formspree, etc.).
-    setSent(true);
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/contact/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(state),
+      });
+      const data = (await res.json()) as { success?: boolean; error?: string };
+      if (!res.ok || !data.success) {
+        throw new Error(data.error ?? "We could not send your message. Please try again.");
+      }
+      setState({ name: "", email: "", topic: "Quote", message: "" });
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (sent) {
@@ -136,7 +156,10 @@ function ContactForm() {
           We'll respond as soon as possible. For urgent matters call us at{" "}
           <span className="font-mono text-cloud-50">{company.primaryPhone}</span>.
         </p>
-        <Button onClick={() => setSent(false)} variant="ghost">
+        <Button onClick={() => {
+          setSent(false);
+          setError(null);
+        }} variant="ghost">
           Send another
         </Button>
       </motion.div>
@@ -206,11 +229,11 @@ function ContactForm() {
         </div>
       </div>
       <div className="flex items-center justify-between border-t border-white/8 bg-white/[0.02] p-6">
-        <p className="text-xs text-cloud-400">
-          By submitting you agree to be contacted about your enquiry.
+        <p className={`text-xs ${error ? "text-danger" : "text-cloud-400"}`} role={error ? "alert" : undefined}>
+          {error ?? "By submitting you agree to be contacted about your enquiry."}
         </p>
-        <Button type="submit" iconRight={<span aria-hidden>→</span>}>
-          Send Message
+        <Button type="submit" disabled={submitting} iconRight={<span aria-hidden>→</span>}>
+          {submitting ? "Sending..." : "Send Message"}
         </Button>
       </div>
 
